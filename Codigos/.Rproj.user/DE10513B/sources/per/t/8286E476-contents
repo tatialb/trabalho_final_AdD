@@ -1,0 +1,165 @@
+#--------------------------------#
+# Projeto Analise de Dados
+#--------------------------------#
+# Tatiane CPRI UFPE
+#--------------------------------#
+
+# importar dados 
+library(readr)
+library(readxl)
+fao = read_excel("dados/fao_fome.xlsx")
+fao2 = read.csv("dados/fao2.csv", sep=',')
+bm = read_excel("dados/banco_mundial.xlsx")
+
+#===========================#
+# tratamento de dados
+#===========================#
+
+#-------- FAO
+
+# selecionar colunas de interesse
+fao = fao[,c(6, 7, 13:29)]
+
+# transformar colunas em linhas ANO
+library(reshape2)
+fao = melt(fao, measure.vars=3:19, variable.name="year", value.name="undernourishment")
+
+# remover '<'
+library(stringr)
+fao$undernourishment = str_replace(fao$undernourishment,'<','')
+
+# remover "
+fao$GeoAreaCode = str_replace_all(fao$GeoAreaCode,'"','')
+fao$GeoAreaName = str_replace_all(fao$GeoAreaName,'"','')
+
+# transformar undernourishment em numerica
+fao$undernourishment = as.numeric(fao$undernourishment)
+
+# visualizar casos faltantes
+library(Amelia)
+missmap(fao)
+
+# remover casos faltantes
+fao = fao[complete.cases(fao$undernourishment),]
+
+#--------- FAO 2
+
+# selecionar variaveis de interesse
+fao2 = fao2[,c(3, 4, 6, 8, 10, 12)]
+
+# pivotar tabela
+fao2 <- dcast(fao2, Area + Year ~ Element + Item, value.var="Value")
+
+#--------- BANCO MUNDIAL ---------#
+
+# selecionar nomes das colunas
+names = colnames(bm)
+
+# remover colchetes e o que estiver dentro
+names = gsub("\\s*\\[[^\\)]+\\]","", names)
+
+# substituit nomes das colunas por novos nomes
+colnames(bm) = names
+
+# remover coluna 
+bm = bm[,-4]
+
+# transformar colunas em linhas ANO
+bmm = melt(bm, measure.vars=4:28, variable.name="year", value.name="value")
+
+# transformar value em numerico
+bmm$value = as.numeric(bmm$value)
+
+# remover missing
+bmm = bmm[complete.cases(bmm$`Country Name`),]
+
+# transformar coluna Series Name nas variaveis
+bm <- dcast(bmm, `Country Name` + `Country Code` + `year` ~ `Series Name`, 
+            value.var="value")
+
+# visualizar missing
+missmap(bm)
+
+### escolher colunas que vao entrar no modelo
+
+#================================================#
+# Estatistica Descritiva e Visualizacao de Dados
+#===============================================#
+
+#########  banco mundial
+
+### distribuicao da producao de cereal
+library(ggplot2)
+
+ggplot(data=bm, aes(bm$`Cereal production (metric tons)`))+
+  geom_histogram()+
+  labs(x='Produção de Cereais',y='Frequência')
+
+### distribuicao da producao de cereal normalizada
+ggplot(data=bm, aes(log(bm$`Cereal production (metric tons)`)))+
+  geom_histogram()+
+  labs(x='Produção de Cereais',y='log(Frequência)')
+
+### distribuicao da producao de cereais por país
+
+# remover casos faltantes
+bm = bm[complete.cases(bm$`Cereal production (metric tons)`),]
+
+# agregar valores por pais
+
+agc = aggregate(bm$`Cereal production (metric tons)`, by=list(bm$`Country Name`), sum )
+
+# ordenar casos
+agc$Group.1 = factor(agc$Group.1, levels = agc$Group.1[order(agc$x, decreasing = TRUE)])
+
+# visualizar grafico
+ggplot(data=agc, aes(x = agc$Group.1, y= agc$x, group=1))+
+  geom_col()+
+  labs(x='',y='Total de Produção de Cereais')+
+  theme_minimal()+
+  theme(axis.text.x = element_text(size=10,angle=60,hjust=1,vjust=1))
+
+### distibuicao da producao de cereais na america latina por ano
+
+# agregar valores por ano
+agc = aggregate(bm$`Cereal production (metric tons)`, by=list(bm$year), sum )
+
+# visualizar grafico
+ggplot(data=agc, aes(x = agc$Group.1, y= agc$x, group=1))+
+  geom_line(color='#702963')+
+  labs(x='',y='Total de Produção de Cereais')+
+  theme_minimal()+
+  theme(axis.text.x = element_text(size=10,angle=60,hjust=1,vjust=1))
+
+#=======================#
+# combinar dados
+#======================#
+
+# remover caracteres de acentos
+library(stringi)
+fao$nome_pais = stri_trans_general(fao$GeoAreaName, "latin-ascii")
+fao2$nome_pais = stri_trans_general(fao2$Area, "latin-ascii")
+bm$nome_pais = stri_trans_general(bm$`Country Name`, "latin-ascii")
+
+# passar para caixa baixa
+fao$nome_pais  = tolower(fao$nome_pais )
+fao2$nome_pais  = tolower(fao2$nome_pais )
+bm$nome_pais  = tolower(bm$nome_pais )
+
+# remover texto entre parenteses
+fao$nome_pais = gsub("\\s*\\([^\\)]+\\)","",as.character(fao$nome_pais))
+fao2$nome_pais = gsub("\\s*\\([^\\)]+\\)","",as.character(fao2$nome_pais))
+
+# remover ', rb' no nome da venezuela
+library(stringr)
+bm$nome_pais = str_replace(bm$nome_pais, ', rb', '')
+
+# criar coluna padronizada year
+fao2$year = fao2$Year
+
+### combinar dados
+dataset = merge(bm, fao2, by=c('nome_pais', 'year'))
+datasetx = merge(dataset, fao, by=c('nome_pais', 'year'))
+
+write.csv(datasetx, 'dataset.csv', row.names = F)
+write_excel_csv(datasetx, 'dataset2.csv')

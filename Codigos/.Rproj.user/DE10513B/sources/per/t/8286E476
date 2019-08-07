@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1564693495913.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "522338286",
+    "id" : "8286E476",
+    "lastKnownWriteTime" : 1564693468,
+    "last_content_update" : 1564693468,
+    "path" : "C:/Users/tatia/Desktop/ANALISE DE DADOS/Trabalho final de AdD/aula1.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "164,41",
+        "scrollLine" : "146"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
