@@ -31,13 +31,6 @@ ggplot(data= data, aes(data$agricultural_land))+
   labs(x= 'agricultural_land', y= 'Frequência')
 ggsave('grafico2.png', width = 4, height = 6, units ="in")
 
-# # food exports
-
-
-# food production
-
-
-# agricultural land
 
 ###------------------- graficos de correlacao
 
